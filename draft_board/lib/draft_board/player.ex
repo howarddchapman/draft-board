@@ -27,7 +27,10 @@ defmodule DraftBoard.Player do
     :field_goal_pct,
     :fg_long,
     :kick_attempts_per_game,
-    :team_offense_rank
+    :team_offense_rank,
+    :league_type,
+    :school,
+    :cpnference
   ]
 
   def injury_modifier(games_missed) do

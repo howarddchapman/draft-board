@@ -30,7 +30,9 @@ defmodule DraftBoard.PlayerSchema do
     field :fantasy_score,         :float
     field :grade_label,           :string
     field :injury_modifier,       :float,   default: 1.0
-
+    field :league_type,  :string, default: "NFL"
+    field :school,       :string
+    field :conference,   :string
     timestamps()
   end
 
@@ -44,7 +46,7 @@ defmodule DraftBoard.PlayerSchema do
                     :red_zone_targets, :interceptions_per_game,
                     :points_allowed_per_game, :sacks_per_game,
                     :turnovers_per_game, :field_goal_pct, :fg_long,
-                    :kick_attempts_per_game, :team_offense_rank])
+                    :kick_attempts_per_game, :team_offense_rank, :league_type, :school, :conference])
     |> validate_required([:name, :position])
   end
 
