@@ -3,12 +3,9 @@ defmodule DraftBoard.Grader do
   alias DraftBoard.Player
 
   def grade(%Player{position: "QB"} = player) do
-    score =
-      (player.yards_per_game * 0.15)
-      + (player.tds_per_game * 8)
-      + (player.touches_per_game * 0.1)
-      - (player.interceptions_per_game)
-      |>Kernel.*(player.injury_modifier)
+    base_score =
+      (player.yards_per_game * 0.15) + (player.tds_per_game * 8) + (player.touches_per_game * 0.1) - (player.interceptions_per_game * 4)
+    score = base_score * player.injury_modifier
 
     label = grade_label("QB", score)
     %{player | fantasy_score: score, grade_label: label}
@@ -17,71 +14,59 @@ defmodule DraftBoard.Grader do
   def grade(%Player{position: "RB"} = player) do
     depth_multiplier = depth_chart_multiplier(player.depth_chart_pos)
 
-    score =
-      (player.tds_per_game * 10)
-      + (player.touches_per_game * 2)
-      + (player.receptions_per_game * 3)
-      + (player.snap_pct *  30)
-      |> Kernel.*(player.injury_modifier)
-      |> Kernel.*(depth_multiplier)
+    base_score =
+      (player.tds_per_game * 10) + (player.touches_per_game * 2) + (player.receptions_per_game * 3) + (player.snap_pct * 30)
+    score = base_score * player.injury_modifier * depth_multiplier
 
     label = grade_label("RB", score)
     %{player | fantasy_score: score, grade_label: label}
-    end
+  end
 
   def grade(%Player{position: "WR"} = player) do
-    score =
-      (player.receptions_per_game * 8)
-      + (player.target_share * 40)
-      + (player.yards_per_game * 0.1)
-      + (player.tds_per_game * 6)
-      |> Kernel.*(player.injury_modifier)
+    base_score =
+      (player.receptions_per_game * 8) + (player.target_share * 40) + (player.yards_per_game * 0.1) + (player.tds_per_game * 6)
+    score = base_score * player.injury_modifier
 
     label = grade_label("WR", score)
     %{player | fantasy_score: score, grade_label: label}
-   end
+  end
 
- def grade(%Player{position: "TE"} = player) do
-    score =
-      (player.receptions_per_game * 10)
-      + (player.target_share * 35)
-      + (player.red_zone_targets *5)
-      + (player.yards_per_game * 0.08)
-      |> Kernel.*(player.injury_modifier)
+  def grade(%Player{position: "TE"} = player) do
+    base_score =
+     (player.receptions_per_game * 10) + (player.target_share * 35) + (player.red_zone_targets * 5) + (player.yards_per_game * 0.08)
+    score = base_score * player.injury_modifier
 
     label = grade_label("TE", score)
     %{player | fantasy_score: score, grade_label: label}
   end
 
   def grade(%Player{position: "DST"} = player) do
-    score =
-      (player.sacks_per_game * 4)
-      + (player.turnovers_per_game * 5)
-      - (player.points_allowed_per_game * 0.3)
-      |> Kernel.*(player.injury_modifier)
+    base_score =
+      (player.sacks_per_game * 4) + (player.turnovers_per_game * 5) - (player.points_allowed_per_game * 0.3)
+    score = base_score * player.injury_modifier
+
     label = grade_label("DST", score)
     %{player | fantasy_score: score, grade_label: label}
-    end
+  end
 
   def grade(%Player{position: "K"} = player) do
-    score =
-      (player.field_goal_pct * 50)
-      + (player.fg_long * 0.3)
-      + (player.kick_attempts_per_game * 2)
-      - (player.team_offense_rank * 0.2)
+    base_score =
+      (player.field_goal_pct * 50) + (player.fg_long * 0.3) + (player.kick_attempts_per_game * 3) - (player.team_offense_rank * 0.2)
+    score = base_score * player.injury_modifier
 
     label = grade_label("K", score)
     %{player | fantasy_score: score, grade_label: label}
-    end
+  end
 
 
 
   defp depth_chart_multiplier(pos) do
     case pos do
-      "RB1" -> 1.0
-      "RB2" -> 0.6
-      "RB3" -> 0.3
-      _ -> 0.5
+      "RB1"     -> 1.0
+      "RB2"     -> 0.6
+      "RB3"     -> 0.3
+      "Unknown" -> 1.0
+    _         -> 0.5
     end
   end
 
