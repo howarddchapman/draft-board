@@ -67,16 +67,16 @@ defmodule DraftBoard.Transformer do
 
 
   defp estimate_snap_pct(stats) do
-   carries = get_stat(stats, "rushing", "CAR")
-   receptions = get_stat(stats, "receiving", "REC")
-   total_touches = carries + receptions
+    carries = get_stat(stats, "rushing", "CAR")
+    receptions = get_stat(stats, "receiving", "REC")
+    total_touches = carries + receptions
 
     cond do
-      total_touches >= 15 -> 0.85
-      total_touches >= 10 -> 0.70
-      total_touches >= 5  -> 0.50
-      total_touches >= 2  -> 0.30
-      true                -> 0.10
+      total_touches >= 15 -> 0.65
+      total_touches >= 10 -> 0.50
+      total_touches >= 5  -> 0.35
+      total_touches >= 2  -> 0.20
+      true                -> 0.05
     end
   end
 end
