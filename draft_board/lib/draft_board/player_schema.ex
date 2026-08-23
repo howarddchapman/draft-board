@@ -33,6 +33,7 @@ defmodule DraftBoard.PlayerSchema do
     field :league_type,  :string, default: "NFL"
     field :school,       :string
     field :conference,   :string
+    field :left_for_nfl, :boolean, default: false
     timestamps()
   end
 
@@ -46,7 +47,7 @@ defmodule DraftBoard.PlayerSchema do
                     :red_zone_targets, :interceptions_per_game,
                     :points_allowed_per_game, :sacks_per_game,
                     :turnovers_per_game, :field_goal_pct, :fg_long,
-                    :kick_attempts_per_game, :team_offense_rank, :league_type, :school, :conference])
+                    :kick_attempts_per_game, :team_offense_rank, :league_type, :school, :conference, :left_for_nfl])
     |> validate_required([:name, :position])
   end
 

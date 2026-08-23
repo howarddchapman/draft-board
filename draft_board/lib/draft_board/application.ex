@@ -8,7 +8,8 @@ defmodule DraftBoard.Application do
   @impl true
   def start(_type, _args) do
     children = [
-      DraftBoard.Repo
+      DraftBoard.Repo,
+      {Plug.Cowboy, scheme: :http, plug: DraftBoard.Server, options: [port: 4000]}
     ]
 
     # See https://hexdocs.pm/elixir/Supervisor.html

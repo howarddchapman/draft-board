@@ -30,7 +30,8 @@ defmodule DraftBoard.Player do
     :team_offense_rank,
     :league_type,
     :school,
-    :conference
+    :conference,
+    :left_for_nfl
   ]
 
   def injury_modifier(games_missed) do

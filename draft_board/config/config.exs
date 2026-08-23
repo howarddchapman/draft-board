@@ -8,3 +8,5 @@ config :draft_board, DraftBoard.Repo,
   port: 5432
 
 config :draft_board, ecto_repos: [DraftBoard.Repo]
+
+config :draft_board, :cfb_api_key, System.get_env("CFB_API_KEY")

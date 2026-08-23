@@ -25,7 +25,8 @@ defmodule DraftBoard.MixProject do
       {:ecto_sql, "~> 3.10"},
       {:postgrex, ">= 0.0.0"},
       {:httpoison, "~> 2.0"},
-      {:jason, "~> 1.4"}
+      {:jason, "~> 1.4"},
+      {:plug_cowboy, "~> 2.6"}
     ]
   end
 end

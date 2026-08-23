@@ -11,28 +11,95 @@ defmodule DraftBoard.Transformer do
 
   defp build_player(stats) do
     first = List.first(stats)
+    position = normalize_position(first["position"])
     games = 12.0
 
-    %Player{
-      name:                first["player"],
-      position:            normalize_position(first["position"]),
-      team:                first["team"],
-      conference:          first["conference"],
-      school:              first["team"],
-      league_type:         "CFB",
-      is_rookie:           false,
-      games_played:        round(games),
-     games_missed_2yr:    0,
-     injury_modifier:     1.0,
-     yards_per_game:      safe_divide(get_stat(stats, "receiving", "YDS") + get_stat(stats, "rushing", "YDS"), games),
-     tds_per_game:        safe_divide(get_stat(stats, "receiving", "TD") + get_stat(stats, "rushing", "TD"), games),
-     receptions_per_game: safe_divide(get_stat(stats, "receiving", "REC"), games),
-     touches_per_game:    safe_divide(get_stat(stats, "rushing", "CAR") + get_stat(stats, "receiving", "REC"), games),
-     target_share:        0.0,
-     snap_pct: estimate_snap_pct(stats),
-     depth_chart_pos:     "Unknown",
-     red_zone_targets:    0.0,
-     interceptions_per_game: safe_divide(get_stat(stats, "passing", "INT"), games),
+    base = %Player{
+      name:               first["player"],
+     position:           position,
+     team:               first["team"],
+     conference:         first["conference"],
+     school:             first["team"],
+     league_type:        "CFB",
+     is_rookie:          false,
+     games_played:       round(games),
+     games_missed_2yr:   0,
+     injury_modifier:    1.0,
+     target_share:       0.0,
+     depth_chart_pos:    "Unknown",
+     red_zone_targets:   0.0,
+     left_for_nfl:       false
+    }
+
+    case position do
+      "QB" -> build_qb(base, stats, games)
+     "RB" -> build_rb(base, stats, games)
+      "WR" -> build_wr(base, stats, games)
+     "TE" -> build_te(base, stats, games)
+     "K"  -> build_k(base, stats, games)
+    _    -> base
+     end
+  end
+
+  defp build_qb(base, stats, games) do
+    pass_yards = get_stat(stats, "passing", "YDS")
+    rush_yards = get_stat(stats, "rushing", "YDS")
+    pass_tds   = get_stat(stats, "passing", "TD")
+    rush_tds   = get_stat(stats, "rushing", "TD")
+    attempts   = get_stat(stats, "passing", "ATT")
+    completions = get_stat(stats, "passing", "COMPLETIONS")
+
+    %{base |
+      yards_per_game:      safe_divide(pass_yards + rush_yards, games),
+      tds_per_game:        safe_divide(pass_tds + rush_tds, games),
+      touches_per_game:    safe_divide(attempts, games),
+      receptions_per_game: safe_divide(completions, games),
+      snap_pct:            if(attempts > 0, do: 0.95, else: 0.0),
+      interceptions_per_game: safe_divide(get_stat(stats, "passing", "INT"), games)
+    }
+  end
+
+  defp build_rb(base, stats, games) do
+    %{base |
+      yards_per_game:      safe_divide(get_stat(stats, "rushing", "YDS") + get_stat(stats, "receiving", "YDS"), games),
+      tds_per_game:        safe_divide(get_stat(stats, "rushing", "TD") + get_stat(stats, "receiving", "TD"), games),
+      receptions_per_game: safe_divide(get_stat(stats, "receiving", "REC"), games),
+      touches_per_game:    safe_divide(get_stat(stats, "rushing", "CAR") + get_stat(stats, "receiving", "REC"), games),
+      snap_pct:            estimate_snap_pct(stats),
+      interceptions_per_game: 0.0
+    }
+  end
+
+  defp build_wr(base, stats, games) do
+    %{base |
+      yards_per_game:      safe_divide(get_stat(stats, "receiving", "YDS"), games),
+      tds_per_game:        safe_divide(get_stat(stats, "receiving", "TD"), games),
+      receptions_per_game: safe_divide(get_stat(stats, "receiving", "REC"), games),
+      touches_per_game:    safe_divide(get_stat(stats, "receiving", "REC"), games),
+      snap_pct:            estimate_snap_pct(stats),
+      interceptions_per_game: 0.0
+    }
+  end
+
+  defp build_te(base, stats, games) do
+    %{base |
+      yards_per_game:      safe_divide(get_stat(stats, "receiving", "YDS"), games),
+      tds_per_game:        safe_divide(get_stat(stats, "receiving", "TD"), games),
+      receptions_per_game: safe_divide(get_stat(stats, "receiving", "REC"), games),
+      touches_per_game:    safe_divide(get_stat(stats, "receiving", "REC"), games),
+      snap_pct:            estimate_snap_pct(stats),
+      interceptions_per_game: 0.0
+    }
+  end
+
+  defp build_k(base, stats, games) do
+    %{base |
+      yards_per_game:      0.0,
+      tds_per_game:        0.0,
+      receptions_per_game: 0.0,
+      touches_per_game:    0.0,
+      snap_pct:            0.0,
+      interceptions_per_game: 0.0
     }
   end
 
