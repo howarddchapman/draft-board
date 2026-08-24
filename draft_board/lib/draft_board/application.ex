@@ -9,7 +9,7 @@ defmodule DraftBoard.Application do
   def start(_type, _args) do
     children = [
       DraftBoard.Repo,
-      {Plug.Cowboy, scheme: :http, plug: DraftBoard.Server, options: [port: 4000]}
+      {Plug.Cowboy, scheme: :http, plug: DraftBoard.Server, options: [port: String.to_integer(System.get_env("PORT") || "4000"), ip: {0, 0, 0, 0}]}
     ]
 
     # See https://hexdocs.pm/elixir/Supervisor.html
