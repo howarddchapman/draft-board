@@ -30,4 +30,4 @@ RUN mix local.hex --force && mix local.rebar --force
 
 EXPOSE 8080
 
-CMD ["mix", "run", "--no-halt"]
+CMD ["sh", "-c", "mix ecto.migrate && mix run --no-halt"]
