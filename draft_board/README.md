@@ -189,4 +189,6 @@ draft_board/
 
 ---
 
-*Built by Howard Chapman · Auburn University · Business Analytics & Information Systems Management*
+*Built by Howard Chapman as a self-directed data engineering project 
+while studying Business Analytics & Information Systems Management 
+at Auburn University. Developed with AI assistance as a learning tool.*
