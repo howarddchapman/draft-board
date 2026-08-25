@@ -183,9 +183,14 @@ draft_board/
 ## What's Next
 
 - [ ] NFL player stats via SportsData.io API
-- [ ] Weekly automated stat refresh scheduler
-- [ ] Deploy to Fly.io for a live public URL
+- [ ] Weekly automated stat refresh scheduler  
+- [ ] Fly.io deployment (in progress)
 - [ ] ADP integration to surface undervalued players
+- [ ] Demo video walkthrough
+
+## Demo
+
+*Live demo video coming soon. To run locally, see Setup instructions above.*
 
 ---
 
