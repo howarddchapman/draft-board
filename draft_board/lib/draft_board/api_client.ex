@@ -1,7 +1,7 @@
 defmodule DraftBoard.ApiClient do
 
   @cfb_base_url "https://api.collegefootballdata.com"
-  @api_key Application.compile_env(:draft_board, :cfb_api_key)
+  @api_key System.get_env("CFB_API_KEY")
 
   defp headers do
     [

@@ -15,4 +15,7 @@ if System.get_env("DATABASE_URL") do
   config :draft_board, DraftBoard.Repo,
     url: System.get_env("DATABASE_URL"),
     pool_size: 2
+
+config :draft_board, :cfb_api_key, System.get_env("CFB_API_KEY") || "5lCFWFLsb4SjwEOvknH6EQsy1oI46oILnadAON56QjlItqk5qsrLk6twpVAzNAYt
+"
 end

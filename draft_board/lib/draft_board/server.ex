@@ -14,8 +14,9 @@ defmodule DraftBoard.Server do
     players = Repo.all(
       from p in PlayerSchema,
       where: p.left_for_nfl == false,
+      where: p.league_type == "CFB",
       order_by: [desc: p.fantasy_score],
-      limit: 50
+      limit: 500
     )
     html = render_dashboard(players)
     send_resp(conn, 200, html)
@@ -25,16 +26,74 @@ defmodule DraftBoard.Server do
     position = conn.params["position"]
     conference = conn.params["conference"]
     grade = conn.params["grade"]
+    nfl_departed = conn.params["nfl_departed"]
 
-    query = from p in PlayerSchema, where: p.left_for_nfl == false, order_by: [desc: p.fantasy_score]
+    query = from p in PlayerSchema,
+      where: p.left_for_nfl == false,
+      where: p.league_type == "CFB",
+      order_by: [desc: p.fantasy_score]
+
     query = if position && position != "", do: from(p in query, where: p.position == ^position), else: query
     query = if conference && conference != "", do: from(p in query, where: p.conference == ^conference), else: query
     query = if grade && grade != "", do: from(p in query, where: p.grade_label == ^grade), else: query
-    nfl_departed = conn.params["nfl_departed"]
     query = if nfl_departed && nfl_departed != "", do: from(p in query, where: p.left_for_nfl == ^(nfl_departed == "true")), else: query
 
     players = Repo.all(query)
     html = render_dashboard(players)
+    send_resp(conn, 200, html)
+  end
+
+  get "/teams" do
+    cfb_key = Application.get_env(:draft_board, :cfb_api_key)
+    conferences = ["SEC", "B1G", "ACC", "B12"]
+
+    all_stats = Enum.flat_map(conferences, fn conf ->
+      case HTTPoison.get("https://api.collegefootballdata.com/stats/season?year=2025&conference=#{conf}", [{"Authorization", "Bearer #{cfb_key}"}], timeout: 15000, recv_timeout: 15000) do
+        {:ok, %{status_code: 200, body: body}} -> Jason.decode!(body)
+        _ -> []
+      end
+    end)
+
+    get_stat = fn stats, team, stat_name ->
+      case Enum.find(stats, fn s -> s["team"] == team && s["statName"] == stat_name end) do
+        nil -> 0
+        s -> s["statValue"]
+      end
+    end
+
+    teams = all_stats |> Enum.map(fn s -> s["team"] end) |> Enum.uniq()
+
+    graded_teams = Enum.map(teams, fn team ->
+      games = get_stat.(all_stats, team, "games")
+      total_yards = get_stat.(all_stats, team, "totalYards")
+      passing_tds = get_stat.(all_stats, team, "passingTDs")
+      rushing_tds = get_stat.(all_stats, team, "rushingTDs")
+      turnovers = get_stat.(all_stats, team, "turnovers")
+      conference = all_stats |> Enum.find(fn s -> s["team"] == team end) |> Map.get("conference")
+
+      games_safe = if games == 0, do: 1, else: games
+      yards_per_game = total_yards / games_safe
+      tds_per_game = (passing_tds + rushing_tds) / games_safe
+      turnovers_per_game = turnovers / games_safe
+
+      yard_bonus = cond do
+        yards_per_game >= 300 -> 1.5 + (Float.floor((yards_per_game - 300) / 50) * 0.25)
+        true -> 0.0
+      end
+
+      score = Float.round((tds_per_game * 3) + yard_bonus - (turnovers_per_game * 2), 1)
+
+      %{
+        team: team,
+        conference: conference,
+        score: score,
+        yards_per_game: Float.round(yards_per_game * 1.0, 1),
+        tds_per_game: Float.round(tds_per_game * 1.0, 2),
+        turnovers_per_game: Float.round(turnovers_per_game * 1.0, 2)
+      }
+    end) |> Enum.sort_by(fn t -> t.score end, :desc)
+
+    html = render_teams(graded_teams)
     send_resp(conn, 200, html)
   end
 
@@ -53,14 +112,13 @@ defmodule DraftBoard.Server do
         <td>#{p.conference}</td>
         <td>#{p.league_type}</td>
         <td style="color: #{grade_color}; font-weight: bold;">#{p.grade_label}</td>
-        <td>#{Float.round(p.fantasy_score || 0.0, 1)}</td>
+        <td>#{Float.round((p.fantasy_score || 0.0) * 1.0, 1)}</td>
         <td>#{Float.round((p.yards_per_game || 0.0) * 1.0, 1)}</td>
         <td>#{Float.round((p.tds_per_game || 0.0) * 1.0, 2)}</td>
         <td>#{Float.round((p.receptions_per_game || 0.0) * 1.0, 2)}</td>
       </tr>
       """
-    end)
-    |> Enum.join("\n")
+    end) |> Enum.join("\n")
 
     """
     <!DOCTYPE html>
@@ -70,6 +128,9 @@ defmodule DraftBoard.Server do
       <style>
         body { font-family: Arial, sans-serif; background: #0f0f1a; color: #e0e0e0; padding: 20px; }
         h1 { color: #7B68EE; }
+        .nav { margin-bottom: 20px; }
+        .nav a { color: #7B68EE; margin-right: 20px; text-decoration: none; font-size: 15px; }
+        .nav a:hover { text-decoration: underline; }
         table { width: 100%; border-collapse: collapse; margin-top: 20px; }
         th { background: #1a1a2e; color: #7B68EE; padding: 10px; text-align: left; }
         td { padding: 8px 10px; border-bottom: 1px solid #2a2a3e; }
@@ -81,6 +142,10 @@ defmodule DraftBoard.Server do
     </head>
     <body>
       <h1>Draft Board</h1>
+      <div class="nav">
+        <a href="/">Players</a>
+        <a href="/teams">Teams</a>
+      </div>
       <form class="filters" action="/players" method="get">
         <select name="position">
           <option value="">All Positions</option>
@@ -110,11 +175,6 @@ defmodule DraftBoard.Server do
           <option value="Dart">Dart</option>
           <option value="Drop">Drop</option>
         </select>
-        <select name="nfl_departed">
-          <option value="">All Players</option>
-          <option value="false">Still in College</option>
-          <option value="true">Left for NFL</option>
-        </select>
         <button type="submit">Filter</button>
       </form>
       <table>
@@ -141,11 +201,78 @@ defmodule DraftBoard.Server do
     """
   end
 
+  defp render_teams(teams) do
+    rows = Enum.with_index(teams, 1) |> Enum.map(fn {t, rank} ->
+      score_color = cond do
+        t.score >= 15 -> "#00ff88"
+        t.score >= 12 -> "#ffcc00"
+        t.score >= 9  -> "#ff9900"
+        true          -> "#ff4444"
+      end
+      """
+      <tr>
+        <td>#{rank}</td>
+        <td>#{t.team}</td>
+        <td>#{t.conference}</td>
+        <td style="color: #{score_color}; font-weight: bold;">#{t.score}</td>
+        <td>#{t.tds_per_game}</td>
+        <td>#{t.yards_per_game}</td>
+        <td>#{t.turnovers_per_game}</td>
+      </tr>
+      """
+    end) |> Enum.join("\n")
+
+    """
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <title>Draft Board - Teams</title>
+      <style>
+        body { font-family: Arial, sans-serif; background: #0f0f1a; color: #e0e0e0; padding: 20px; }
+        h1 { color: #7B68EE; }
+        .nav { margin-bottom: 20px; }
+        .nav a { color: #7B68EE; margin-right: 20px; text-decoration: none; font-size: 15px; }
+        .nav a:hover { text-decoration: underline; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th { background: #1a1a2e; color: #7B68EE; padding: 10px; text-align: left; }
+        td { padding: 8px 10px; border-bottom: 1px solid #2a2a3e; }
+        tr:hover { background: #1a1a2e; }
+      </style>
+    </head>
+    <body>
+      <h1>Draft Board — Team Offense Rankings</h1>
+      <div class="nav">
+        <a href="/">Players</a>
+        <a href="/teams">Teams</a>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>Rank</th>
+            <th>School</th>
+            <th>Conference</th>
+            <th>Score</th>
+            <th>TDs/G</th>
+            <th>Yds/G</th>
+            <th>TO/G</th>
+          </tr>
+        </thead>
+        <tbody>
+          #{rows}
+        </tbody>
+      </table>
+    </body>
+    </html>
+    """
+  end
+
   defp grade_color("Elite"),     do: "#00ff88"
   defp grade_color("Workhorse"), do: "#00cc66"
   defp grade_color("WR1"),       do: "#00cc66"
+  defp grade_color("Franchise"), do: "#00cc66"
   defp grade_color("Handcuff"),  do: "#ffcc00"
   defp grade_color("WR2"),       do: "#ffcc00"
+  defp grade_color("Starter"),   do: "#ffcc00"
   defp grade_color("Streamer"),  do: "#ff9900"
   defp grade_color("Stash"),     do: "#ff9900"
   defp grade_color("Depth"),     do: "#ff6600"
