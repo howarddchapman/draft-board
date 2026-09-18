@@ -26,7 +26,8 @@ defmodule DraftBoard.MixProject do
       {:postgrex, ">= 0.0.0"},
       {:httpoison, "~> 2.0"},
       {:jason, "~> 1.4"},
-      {:plug_cowboy, "~> 2.6"}
+      {:plug_cowboy, "~> 2.6"},
+      {:nimble_csv, "~> 1.2"}
     ]
   end
 end
